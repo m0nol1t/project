@@ -9,9 +9,10 @@ class SQLiteModel:
     _TABLE = None
     _MAPPING = {}
     __TYPE_MAPPING = {
-        int : 'int',
-        str : 'varchar(2000)',
-        date : 'varchar(30)'
+        int : 'INTEGER',
+        str : 'TEXT',
+        float : 'REAL',
+        date : 'DATE'
     }
 
     @classmethod
@@ -45,12 +46,13 @@ class SQLiteModel:
     def create_mapping(cls):
         conn = cls._connect()
         cur = conn.cursor()
-        mapfortable = [str(k) + " " + str(cls.__TYPE_MAPPING.get(v)) for k, v in cls._MAPPING.items()]
+        mapfortable = tuple([str(k) + " " + str(cls.__TYPE_MAPPING.get(v)) for k, v in cls._MAPPING.items()])
         
-        cur.execute("""CREATE TABLE IF NOT EXISTS ? (""" + ("?," * len(mapfortable))[:-1]  + """)""", (cls._TABLE,) + mapfortable)
+        cur.execute("""CREATE TABLE IF NOT EXISTS ? (id INTEGER AUTOINCREMENT PRIMARY KEY""" + (",?" * len(mapfortable)) + """)""", (cls._TABLE,) + mapfortable)
 
         conn.commit()
         conn.close()
+
 
     @classmethod
     def update_mapping(cls):
@@ -59,9 +61,19 @@ class SQLiteModel:
 
     @classmethod
     def insert(cls):
-        """Сделать вставку"""
-        pass
+        conn = cls._connect()
+        cur = conn.cursor()
+        keys = tuple([str(k) for k in cls._MAPPING.keys()])
+        vals = tuple([cls.__dict__[v] for v in cls._MAPPING.keys()])
+
+        cur.execute("""INSERT INTO ?("""+ ("?," * len(keys))[:-1] +""") VALUES("""+ ("?," * len(vals))[:-1] +""")""", (cls._TABLE,) + keys + vals)
         
+        pk = cur.lastrowid
+
+        conn.commit()
+        conn.close()
+        
+        return pk
 
 
 class BaseModel(SQLiteModel):
